@@ -1,13 +1,16 @@
 # TODOリスト
 
+## 0. notion
+ALL tasks depend on system_design.md, before you do tasks, plz read this file.
+Your task process log is written in gen_logs/.
 ## 1. 環境構築
 
 - [x] `package.json` と `vite.config.ts` を確認し、React + TypeScript の開発環境が整っていることを確認する
 - [x] Docker 環境で依存関係がセットアップされていることを確認する（`docker-compose.yml` / `dockerfile` の内容確認）
 - [x] `docker-compose up --build` で開発環境が立ち上がることを確認する
-- [ ] Cloudflare Workers と D1 を Docker から起動・デバッグできる設定があるか確認する（wrangler.toml など）
-- [ ] `src/` に `api/`、`components/`、`pages/` フォルダを作成する
-- [ ] `docs/system_design.md` をベースに、実装対象画面と API を一覧化する
+- [x] Cloudflare Workers と D1 を Docker から起動・デバッグできる設定があるか確認する（wrangler.toml など）
+- [x] `src/` に `api/`、`components/`、`pages/` フォルダを作成する
+- [x] `docs/system_design.md` をベースに、実装対象画面と API を一覧化する
 
 ## 2. DB設計・バックエンド準備
 
@@ -32,27 +35,27 @@
 
 ## 4. フロントエンド共通基盤
 
-- [ ] `src/main.tsx` にルーティングを追加し、`/`, `/login`, `/home`, `/morning-page`, `/artist-date` のパスを定義する
-- [ ] `src/App.tsx` にルート切り替えと認証状態管理の仕組みを実装する
-- [ ] 認証状態を保持するコンテキストまたは状態管理を `src/auth/` に実装する
-- [ ] API 呼び出し用の `src/api/` ユーティリティを作成し、共通の fetch ロジックと認証ヘッダーを定義する
-- [ ] `src/components/Layout.tsx` に共通ヘッダーとフッターのレイアウトコンポーネントを作成する
+- [x] `src/main.tsx` にルーティングを追加し、`/`, `/login`, `/home`, `/morning-page`, `/artist-date` のパスを定義する
+- [x] `src/App.tsx` にルート切り替えと認証状態管理の仕組みを実装する
+- [x] 認証状態を保持するコンテキストまたは状態管理を `src/auth/` に実装する
+- [x] API 呼び出し用の `src/api/` ユーティリティを作成し、共通の fetch ロジックと認証ヘッダーを定義する
+- [x] `src/components/Layout.tsx` に共通ヘッダーとフッターのレイアウトコンポーネントを作成する
 
 ## 5. フロントエンド画面実装
 
 ### 5.1 LP
 
-- [ ] `src/pages/LandingPage.tsx` を作成する
+- [x] `src/pages/LandingPage.tsx` を作成する
 - [ ] アプリ名、説明文、通知機能の紹介、ログインへの CTA を表示する
-- [ ] CTA クリックで `/login` に遷移するようにする
+- [x] CTA クリックで `/login` に遷移するようにする
 
 ### 5.2 ログイン画面
 
-- [ ] `src/pages/LoginPage.tsx` を作成する
+- [x] `src/pages/LoginPage.tsx` を作成する
 - [ ] 認証ボタンまたはフォームを配置する
-- [ ] 認証成功時に `/home` に遷移するロジックを実装する
+- [x] 認証成功時に `/home` に遷移するロジックを実装する
 - [ ] 認証失敗時にエラーメッセージを表示する
-- [ ] 未認証ユーザーから `/home`, `/morning-page`, `/artist-date` へのアクセスをガードする
+- [x] 未認証ユーザーから `/home`, `/morning-page`, `/artist-date` へのアクセスをガードする
 
 ### 5.3 ユーザーホーム画面
 

@@ -7,11 +7,17 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "workers:dev": "wrangler dev --ip 0.0.0.0 --port 8787",
+    "workers:deploy": "wrangler deploy",
+    "d1:create": "wrangler d1 create artist_way_db",
+    "d1:list": "wrangler d1 list",
+    "d1:execute": "wrangler d1 execute artist_way_db --local --command"
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.17.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -22,6 +28,6 @@
     "tailwindcss": "^3.4.5",
     "typescript": "^5.6.2",
     "vite": "^7.0.0",
-    "wrangler": "^4.86.0"
+    "wrangler": "^4.101.0"
   }
 }

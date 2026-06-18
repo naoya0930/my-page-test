@@ -9,3 +9,9 @@ type = "javascript"
 
 [vars]
   CF_D1_DATABASE_ID = "artist_way_db"
+
+# D1 データベース設定（ローカル開発用）
+[[d1_databases]]
+  binding = "DB"
+  database_name = "artist_way_db"
+  database_id = "local-dev-db"

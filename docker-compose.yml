@@ -23,7 +23,11 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - wrangler_data:/app/.wrangler
     environment:
       - NODE_ENV=development
     depends_on:
       - web
+
+volumes:
+  wrangler_data:
