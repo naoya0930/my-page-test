@@ -14,4 +14,4 @@ type = "javascript"
 [[d1_databases]]
   binding = "DB"
   database_name = "ast_way_db"
-  database_id = "00000000-0000-0000-0000-000000000000"
+  database_id = "549fa561-d582-4cd7-b989-00b3d71bb912"
