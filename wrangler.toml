@@ -1,0 +1,11 @@
+name = "artist-way-support"
+main = "./workers/index.js"
+compatibility_date = "2025-01-01"
+type = "javascript"
+
+[dev]
+  ip = "0.0.0.0"
+  port = 8787
+
+[vars]
+  CF_D1_DATABASE_ID = "artist_way_db"

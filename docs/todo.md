@@ -2,9 +2,9 @@
 
 ## 1. 環境構築
 
-- [ ] `package.json` と `vite.config.ts` を確認し、React + TypeScript の開発環境が整っていることを確認する
-- [ ] Docker 環境で依存関係がセットアップされていることを確認する（`docker-compose.yml` / `dockerfile` の内容確認）
-- [ ] `docker-compose up --build` で開発環境が立ち上がることを確認する
+- [x] `package.json` と `vite.config.ts` を確認し、React + TypeScript の開発環境が整っていることを確認する
+- [x] Docker 環境で依存関係がセットアップされていることを確認する（`docker-compose.yml` / `dockerfile` の内容確認）
+- [x] `docker-compose up --build` で開発環境が立ち上がることを確認する
 - [ ] Cloudflare Workers と D1 を Docker から起動・デバッグできる設定があるか確認する（wrangler.toml など）
 - [ ] `src/` に `api/`、`components/`、`pages/` フォルダを作成する
 - [ ] `docs/system_design.md` をベースに、実装対象画面と API を一覧化する

@@ -1,17 +1,17 @@
-# 開発用の軽量なBun イメージを使用
-FROM oven/bun:latest
+# Wrangler / Miniflare を使った Cloudflare Workers 開発用 Dockerfile
+FROM node:20
 
 WORKDIR /app
 
-# パッケージ管理ファイルをコピーして依存関係をインストール
-COPY package*.json bunfig.toml* ./
-RUN bun install
+# 依存関係をインストール
+COPY package*.json ./
+RUN npm install
 
-# ソースコードをコピー
+# アプリケーションソースをコピー
 COPY . .
 
-# Viteのデフォルトポートを開放
-EXPOSE 5173
+# Workers 開発用のポートを公開
+EXPOSE 8787
 
-# 開発サーバーを起動（ホストからのアクセスを許可するために --host を付与）
-CMD ["bun", "run", "dev", "--", "--host"]
+# デフォルトで Wrangler dev を起動
+CMD ["npx", "wrangler", "dev", "--host", "0.0.0.0", "--port", "8787"]
