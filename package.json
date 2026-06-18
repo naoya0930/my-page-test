@@ -10,9 +10,12 @@
     "preview": "vite preview",
     "workers:dev": "wrangler dev --ip 0.0.0.0 --port 8787",
     "workers:deploy": "wrangler deploy",
-    "d1:create": "wrangler d1 create artist_way_db",
+    "d1:create": "wrangler d1 create ast_way_db",
     "d1:list": "wrangler d1 list",
-    "d1:execute": "wrangler d1 execute artist_way_db --local --command"
+    "d1:execute": "wrangler d1 execute ast_way_db --local --command",
+    "d1:migrate": "wrangler d1 execute ast_way_db --local --file=./migrations/001_create_tables.sql",
+    "d1:migrate:prod": "wrangler d1 execute ast_way_db --file=./migrations/001_create_tables.sql",
+    "d1:tables": "wrangler d1 execute ast_way_db --local --command=\"SELECT name FROM sqlite_master WHERE type='table';\""
   },
   "dependencies": {
     "react": "^18.3.1",

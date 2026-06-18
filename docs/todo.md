@@ -14,11 +14,11 @@ Your task process log is written in gen_logs/.
 
 ## 2. DB設計・バックエンド準備
 
-- [ ] D1 で作成するスキーマを `migrations/` または `schema.sql` に定義する
-- [ ] `Users` テーブルのカラムを定義する: `id`, `email`, `created_at`, `last_active_at`, `auth_provider`
-- [ ] `MorningPages` テーブルのカラムを定義する: `id`, `user_id`, `entry_date`, `content`, `character_count`, `created_at`, `updated_at`
-- [ ] `ArtistDates` テーブルのカラムを定義する: `id`, `user_id`, `week_number`, `went_out`, `excited`, `created_at`, `updated_at`
-- [ ] `Progress` テーブルを補助集計用に定義する: `id`, `user_id`, `week_number`, `morning_page_done`, `artist_date_done`, `updated_at`
+- [x] D1 で作成するスキーマを `migrations/` または `schema.sql` に定義する
+- [x] `Users` テーブルのカラムを定義する: `id`, `email`, `created_at`, `last_active_at`, `auth_provider`
+- [x] `MorningPages` テーブルのカラムを定義する: `id`, `user_id`, `entry_date`, `content`, `character_count`, `created_at`, `updated_at`
+- [x] `ArtistDates` テーブルのカラムを定義する: `id`, `user_id`, `week_number`, `went_out`, `excited`, `created_at`, `updated_at`
+- [x] `Progress` テーブルを補助集計用に定義する: `id`, `user_id`, `week_number`, `morning_page_done`, `artist_date_done`, `updated_at`
 - [ ] Cloudflare Workers で D1 接続を行う API 公開の雛形ファイルを作成する
 - [ ] 認証検証の雛形を Workers のエンドポイントに追加する（認証トークン / セッション検証）
 

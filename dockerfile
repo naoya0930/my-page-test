@@ -1,5 +1,5 @@
 # Wrangler / Miniflare を使った Cloudflare Workers 開発用 Dockerfile
-FROM node:20
+FROM node:22
 
 WORKDIR /app
 
