@@ -7,6 +7,7 @@
 - 目的: 12週間の実践を習慣化し、振り返りと自己管理を補助すること
 - メインユーザー: The Artist's Wayのプログラムを実践したい個人ユーザー
 - プラットフォーム: React フロントエンド + Cloudflare Workers バックエンド + Cloudflare D1 / R2 ストレージ
+- 認証基盤: Supabase Auth
 
 ## 2. ターゲットユーザーと提供価値
 
@@ -44,7 +45,8 @@
 
 #### 挙動
 - 未認証ユーザーはこの画面以外の画面にアクセス不可
-- 認証状態はフロントエンドで保持し、APIはユーザー識別子を受け取る
+- 認証基盤は Supabase Auth を利用し、クライアントは Supabase のセッション/アクセストークンでログインする
+- 認証状態はフロントエンドで保持し、APIはCloudflare Workers 上で Supabase JWT を検証してユーザー識別子を取得する
 - ログインエラー時はエラー文言を表示
 
 ### 3.3 ユーザーホーム画面
@@ -123,9 +125,9 @@
 
 ### セキュリティ
 - 認証済みユーザーだけが自分のデータにアクセスできる
-- APIはユーザーIDと認証トークンを検証する
-- Cloudflare Workersでの認証チェックを必須化
-- D1やR2へのアクセスはバックエンド経由のみとする
+- 認証基盤は Supabase Auth を利用し、APIはCloudflare Workers上で Supabase の JWT / セッションを検証する
+- Cloudflare Workersでの認証チェックを必須化し、D1やR2へのアクセスはバックエンド経由のみとする
+- ユーザーデータは Supabase の認証IDとアプリケーションのユーザーIDを紐付けて管理する
 - セッション固定化やCSRF対策を検討する
 - ローカル検証にはMiniflareコンテナを使用し、Cloudflare Workersの動作を再現した環境でテストする
 
@@ -165,6 +167,7 @@
 
 ### Users
 - id: TEXT PRIMARY KEY
+- supabase_user_id: TEXT UNIQUE NOT NULL
 - email: TEXT NOT NULL
 - created_at: DATETIME NOT NULL
 - last_active_at: DATETIME NULL

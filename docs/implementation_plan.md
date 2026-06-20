@@ -35,7 +35,8 @@
 - `/home` （認証成功時）
 
 **API呼び出し:**
-- 認証API（実装詳細は未確定、Supabase Auth等を想定）
+- フロントエンドは Supabase Auth クライアントを用いてログインし、アクセストークン / セッションを取得する
+- API 認証は Cloudflare Workers 上で Supabase JWT を検証し、認証ユーザーの `supabase_user_id` を取得して処理を行う
 
 ---
 
@@ -111,8 +112,12 @@
 ### 2.1 認証関連API
 
 #### 認証API
-**実装方式:** 未確定（Supabase Auth連携を想定）  
-**詳細:** 今後の実装フェーズで確定
+**実装方式:** Supabase Auth を利用
+**詳細:**
+- フロントエンドで Supabase クライアントを初期化し、ログイン・ログアウトを実行する
+- 毎回 API へリクエストする際は、Supabase のアクセストークンを Authorization ヘッダーに含める
+- Cloudflare Workers は Supabase JWT を検証し、認証ユーザーの `supabase_user_id` を取得して API 処理を実行する
+- アプリ独自の `Users` テーブルには `supabase_user_id` を保存し、ユーザー固有データと紐付ける
 
 ---
 
@@ -126,12 +131,14 @@
 **リクエストボディ:**
 ```json
 {
-  "user_id": "string",
   "entry_date": "YYYY-MM-DD",
   "content": "string",
   "character_count": 1234
 }
 ```
+
+**補足:**
+- `user_id` はクライアント送信ではなく、認証トークンから Workers 側で解決する
 
 **レスポンス（成功）:**
 ```json
@@ -196,12 +203,14 @@
 **リクエストボディ:**
 ```json
 {
-  "user_id": "string",
   "week_number": 1,
   "went_out": true,
   "excited": false
 }
 ```
+
+**補足:**
+- `user_id` は認証済みユーザーの情報から Workers 側で付与する
 
 **レスポンス（成功）:**
 ```json
@@ -445,7 +454,8 @@ CREATE TABLE Progress (
 ### Phase 1: バックエンド基盤
 1. D1スキーマ定義（migrations作成）
 2. Workers APIの雛形実装
-3. 認証検証機能の実装
+3. Supabase Auth トークン検証機能の実装
+4. `supabase_user_id` とアプリユーザーIDの紐付けを設計
 
 ### Phase 2: バックエンドAPI実装
 1. `POST /api/morning-pages`
@@ -521,7 +531,8 @@ CREATE TABLE Progress (
 
 ### 認証・認可
 - 全APIで認証必須
-- `user_id`の検証と紐付け
+- Cloudflare Workers 上で Supabase JWT / アクセストークン検証を実施
+- `supabase_user_id` を `Users` テーブルの `supabase_user_id` と紐付け
 - 他ユーザーデータへのアクセス防止
 
 ### データ保護

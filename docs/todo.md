@@ -15,12 +15,12 @@ Your task process log is written in gen_logs/.
 ## 2. DB設計・バックエンド準備
 
 - [x] D1 で作成するスキーマを `migrations/` または `schema.sql` に定義する
-- [x] `Users` テーブルのカラムを定義する: `id`, `email`, `created_at`, `last_active_at`, `auth_provider`
+- [ ] `Users` テーブルのカラムを定義する: `id`, `supabase_user_id`, `email`, `created_at`, `last_active_at`, `auth_provider`
 - [x] `MorningPages` テーブルのカラムを定義する: `id`, `user_id`, `entry_date`, `content`, `character_count`, `created_at`, `updated_at`
 - [x] `ArtistDates` テーブルのカラムを定義する: `id`, `user_id`, `week_number`, `went_out`, `excited`, `created_at`, `updated_at`
 - [x] `Progress` テーブルを補助集計用に定義する: `id`, `user_id`, `week_number`, `morning_page_done`, `artist_date_done`, `updated_at`
 - [ ] Cloudflare Workers で D1 接続を行う API 公開の雛形ファイルを作成する
-- [ ] 認証検証の雛形を Workers のエンドポイントに追加する（認証トークン / セッション検証）
+- [ ] Supabase Auth トークン検証の雛形を Workers のエンドポイントに追加する
 
 ## 3. バックエンド API 実装
 
@@ -29,7 +29,7 @@ Your task process log is written in gen_logs/.
 - [ ] `POST /api/artist-dates` エンドポイントを実装し、今週のアーティストデート記録を保存できるようにする
 - [ ] `GET /api/artist-dates?week_number=N` エンドポイントを実装し、週別のアーティストデートを取得できるようにする
 - [ ] `GET /api/progress` エンドポイントを実装し、ユーザーホームの現在週次進捗を返すようにする
-- [ ] 各 API で `user_id` を認証済みユーザーに紐づけて処理するロジックを実装する
+- [ ] 各 API で `supabase_user_id` を認証済みユーザーに紐づけて処理し、`user_id` は Workers 側で解決するロジックを実装する
 - [ ] エラー時に適切な JSON 形式のメッセージを返すようにする
 - [ ] バックエンドのテスト用データ挿入スクリプトを用意する
 
@@ -38,7 +38,7 @@ Your task process log is written in gen_logs/.
 - [x] `src/main.tsx` にルーティングを追加し、`/`, `/login`, `/home`, `/morning-page`, `/artist-date` のパスを定義する
 - [x] `src/App.tsx` にルート切り替えと認証状態管理の仕組みを実装する
 - [x] 認証状態を保持するコンテキストまたは状態管理を `src/auth/` に実装する
-- [x] API 呼び出し用の `src/api/` ユーティリティを作成し、共通の fetch ロジックと認証ヘッダーを定義する
+- [ ] API 呼び出し用の `src/api/` ユーティリティを作成し、共通の fetch ロジックと Supabase Auth トークン送信を定義する
 - [x] `src/components/Layout.tsx` に共通ヘッダーとフッターのレイアウトコンポーネントを作成する
 
 ## 5. フロントエンド画面実装
@@ -52,7 +52,7 @@ Your task process log is written in gen_logs/.
 ### 5.2 ログイン画面
 
 - [x] `src/pages/LoginPage.tsx` を作成する
-- [ ] 認証ボタンまたはフォームを配置する
+- [ ] Supabase Auth クライアントを利用した認証ボタンを配置する
 - [x] 認証成功時に `/home` に遷移するロジックを実装する
 - [ ] 認証失敗時にエラーメッセージを表示する
 - [x] 未認証ユーザーから `/home`, `/morning-page`, `/artist-date` へのアクセスをガードする
