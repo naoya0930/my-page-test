@@ -5,13 +5,15 @@
 -- Users table: Store user information
 CREATE TABLE IF NOT EXISTS Users (
   id TEXT PRIMARY KEY,
+  supabase_user_id TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_active_at DATETIME,
   auth_provider TEXT
 );
 
--- Create index on email for faster lookups
+-- Create indexes on email and Supabase user ID for faster lookups
+CREATE INDEX IF NOT EXISTS idx_users_supabase_user_id ON Users(supabase_user_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON Users(email);
 
 -- MorningPages table: Store daily morning page entries

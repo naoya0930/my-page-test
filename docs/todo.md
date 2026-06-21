@@ -15,12 +15,12 @@ Your task process log is written in gen_logs/.
 ## 2. DB設計・バックエンド準備
 
 - [x] D1 で作成するスキーマを `migrations/` または `schema.sql` に定義する
-- [ ] `Users` テーブルのカラムを定義する: `id`, `supabase_user_id`, `email`, `created_at`, `last_active_at`, `auth_provider`
+- [x] `Users` テーブルのカラムを定義する: `id`, `supabase_user_id`, `email`, `created_at`, `last_active_at`, `auth_provider`
 - [x] `MorningPages` テーブルのカラムを定義する: `id`, `user_id`, `entry_date`, `content`, `character_count`, `created_at`, `updated_at`
 - [x] `ArtistDates` テーブルのカラムを定義する: `id`, `user_id`, `week_number`, `went_out`, `excited`, `created_at`, `updated_at`
 - [x] `Progress` テーブルを補助集計用に定義する: `id`, `user_id`, `week_number`, `morning_page_done`, `artist_date_done`, `updated_at`
-- [ ] Cloudflare Workers で D1 接続を行う API 公開の雛形ファイルを作成する
-- [ ] Supabase Auth トークン検証の雛形を Workers のエンドポイントに追加する
+- [x] Cloudflare Workers で D1 接続を行う API 公開の雛形ファイルを作成する
+- [x] Supabase Auth トークン検証の雛形を Workers のエンドポイントに追加する
 
 ## 3. バックエンド API 実装
 

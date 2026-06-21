@@ -10,6 +10,11 @@ type = "javascript"
 [vars]
   CF_D1_DATABASE_ID = "artist_way_db"
 
+# 環境変数（.dev.vars から自動読み込み）
+# - SUPABASE_JWT_SECRET: Supabase JWT 検証用シークレット
+# - NEXT_PUBLIC_SUPABASE_URL: Supabase プロジェクト URL
+# - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Supabase 公開キー
+
 # D1 データベース設定（ローカル開発用）
 [[d1_databases]]
   binding = "DB"
