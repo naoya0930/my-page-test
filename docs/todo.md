@@ -21,24 +21,25 @@ Your task process log is written in gen_logs/.
 - [x] `Progress` テーブルを補助集計用に定義する: `id`, `user_id`, `week_number`, `morning_page_done`, `artist_date_done`, `updated_at`
 - [x] Cloudflare Workers で D1 接続を行う API 公開の雛形ファイルを作成する
 - [x] Supabase Auth トークン検証の雛形を Workers のエンドポイントに追加する
+- [ ] Supabase Auth は email ログインと Google OIDC ログインを許可する前提で設計する
 
 ## 3. バックエンド API 実装
 
-- [ ] `POST /api/morning-pages` エンドポイントを実装し、モーニングページを保存できるようにする
-- [ ] `GET /api/morning-pages?date=YYYY-MM-DD` エンドポイントを実装し、指定日付のモーニングページを取得できるようにする
-- [ ] `POST /api/artist-dates` エンドポイントを実装し、今週のアーティストデート記録を保存できるようにする
-- [ ] `GET /api/artist-dates?week_number=N` エンドポイントを実装し、週別のアーティストデートを取得できるようにする
-- [ ] `GET /api/progress` エンドポイントを実装し、ユーザーホームの現在週次進捗を返すようにする
-- [ ] 各 API で `supabase_user_id` を認証済みユーザーに紐づけて処理し、`user_id` は Workers 側で解決するロジックを実装する
-- [ ] エラー時に適切な JSON 形式のメッセージを返すようにする
-- [ ] バックエンドのテスト用データ挿入スクリプトを用意する
+- [x] `POST /api/morning-pages` エンドポイントを実装し、モーニングページを保存できるようにする
+- [x] `GET /api/morning-pages?date=YYYY-MM-DD` エンドポイントを実装し、指定日付のモーニングページを取得できるようにする（⚠️ content フィールドが空文字列で返る問題あり - 要修正）
+- [x] `POST /api/artist-dates` エンドポイントを実装し、今週のアーティストデート記録を保存できるようにする
+- [x] `GET /api/artist-dates?week_number=N` エンドポイントを実装し、週別のアーティストデートを取得できるようにする
+- [x] `GET /api/progress` エンドポイントを実装し、ユーザーホームの現在週次進捗を返すようにする
+- [x] 各 API で `supabase_user_id` を認証済みユーザーに紐づけて処理し、`user_id` は Workers 側で解決するロジックを実装する
+- [x] エラー時に適切な JSON 形式のメッセージを返すようにする
+- [x] バックエンドのテスト用データ挿入スクリプトを用意する (`migrations/test_data.sql`)
 
 ## 4. フロントエンド共通基盤
 
 - [x] `src/main.tsx` にルーティングを追加し、`/`, `/login`, `/home`, `/morning-page`, `/artist-date` のパスを定義する
 - [x] `src/App.tsx` にルート切り替えと認証状態管理の仕組みを実装する
 - [x] 認証状態を保持するコンテキストまたは状態管理を `src/auth/` に実装する
-- [ ] API 呼び出し用の `src/api/` ユーティリティを作成し、共通の fetch ロジックと Supabase Auth トークン送信を定義する
+- [x] API 呼び出し用の `src/api/` ユーティリティを作成し、共通の fetch ロジックと Supabase Auth トークン送信を定義する (`src/api/client.ts`, `src/auth/supabaseClient.ts`, `src/vite-env.d.ts` 作成完了、`@supabase/supabase-js` インストール済み)
 - [x] `src/components/Layout.tsx` に共通ヘッダーとフッターのレイアウトコンポーネントを作成する
 
 ## 5. フロントエンド画面実装
