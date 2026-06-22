@@ -33,7 +33,7 @@ Your task process log is written in gen_logs/.
 - [x] 各 API で `supabase_user_id` を認証済みユーザーに紐づけて処理し、`user_id` は Workers 側で解決するロジックを実装する
 - [x] エラー時に適切な JSON 形式のメッセージを返すようにする
 - [x] バックエンドのテスト用データ挿入スクリプトを用意する (`migrations/test_data.sql`)
-- [x] APIにトークンを送付し、サンプルユーザでログインできることを確認する（test-user-001で認証成功確認済み）
+- [ ] APIにトークンを送付し、サンプルユーザでログインできることを確認する（ユーザ情報は、`.env`に存在）
 
 ## 4. フロントエンド共通基盤
 

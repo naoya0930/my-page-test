@@ -4,6 +4,12 @@
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url)
+    const method = request.method
+
+    // CORS preflight handling
+    if (method === 'OPTIONS') {
+      return handleCORS(env)
+    }
 
     // ヘルスチェックエンドポイント
     if (pathname === '/') {
@@ -451,14 +457,37 @@ async function handleGetProgress(db, userId) {
   }
 }
 
-function jsonResponse(body, status = 200) {
+/**
+ * Handle CORS preflight requests
+ */
+function handleCORS(env) {
+  const allowedOrigin = env.CORS_ALLOWED_ORIGIN || '*'
+  const allowedMethods = env.CORS_ALLOWED_METHODS || 'GET, POST, PUT, DELETE, OPTIONS'
+  const allowedHeaders = env.CORS_ALLOWED_HEADERS || 'Content-Type, Authorization'
+  
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Methods': allowedMethods,
+      'Access-Control-Allow-Headers': allowedHeaders,
+      'Access-Control-Max-Age': '86400', // 24 hours
+    }
+  })
+}
+
+function jsonResponse(body, status = 200, env = {}) {
+  const allowedOrigin = env.CORS_ALLOWED_ORIGIN || '*'
+  const allowedMethods = env.CORS_ALLOWED_METHODS || 'GET, POST, PUT, DELETE, OPTIONS'
+  const allowedHeaders = env.CORS_ALLOWED_HEADERS || 'Content-Type, Authorization'
+  
   return new Response(JSON.stringify(body), {
     status,
     headers: { 
       'Content-Type': 'application/json;charset=UTF-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Methods': allowedMethods,
+      'Access-Control-Allow-Headers': allowedHeaders
     }
   })
 }
