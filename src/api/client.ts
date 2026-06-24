@@ -38,6 +38,16 @@ export interface Progress {
 }
 
 /**
+ * Get API base URL from environment variable
+ * Falls back to localhost for development
+ */
+const getApiBaseUrl = (): string => {
+  // In production (Cloudflare Pages), use environment variable
+  // In development, use localhost
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787'
+}
+
+/**
  * Base API fetch function with Supabase Auth token
  */
 async function apiFetch<T = any>(
@@ -51,7 +61,8 @@ async function apiFetch<T = any>(
     throw new Error('Not authenticated')
   }
 
-  const response = await fetch(`http://localhost:8787/api${path}`, {
+  const apiBaseUrl = getApiBaseUrl()
+  const response = await fetch(`${apiBaseUrl}/api${path}`, {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
