@@ -184,7 +184,12 @@ async function handleApiRequest(request, env, pathname, userId, auth) {
 
     // Progress endpoint
     if (apiPath === '/progress' && method === 'GET') {
-      return await handleGetProgress(env.DB, userId)
+      return await handleGetProgress(url, env.DB, userId)
+    }
+
+    // Statistics endpoint
+    if (apiPath === '/statistics' && method === 'GET') {
+      return await handleGetStatistics(env.DB, userId)
     }
 
     // Base route (for testing)
@@ -251,6 +256,9 @@ async function handleCreateMorningPage(request, db, userId) {
       ).bind(userId, entryDate, content, characterCount).run()
     }
 
+    // Auto-update Progress table
+    await autoUpdateMorningPageProgress(db, userId, entryDate)
+
     return jsonResponse({
       ok: true,
       message: 'Morning page saved successfully',
@@ -265,6 +273,50 @@ async function handleCreateMorningPage(request, db, userId) {
       message: 'Failed to save morning page',
       error: error.message 
     }, 500)
+  }
+}
+
+/**
+ * Auto-update Progress.morning_page_done when a morning page is saved
+ */
+async function autoUpdateMorningPageProgress(db, userId, entryDate) {
+  try {
+    // Get user's creation date to calculate week number
+    const user = await db.prepare(
+      'SELECT created_at FROM Users WHERE id = ?'
+    ).bind(userId).first()
+
+    if (!user) return
+
+    const createdDate = new Date(user.created_at)
+    const entryDateTime = new Date(entryDate)
+    const daysSinceCreation = Math.floor((entryDateTime - createdDate) / (1000 * 60 * 60 * 24))
+    const weekNumber = Math.min(Math.floor(daysSinceCreation / 7) + 1, 12)
+
+    // Calculate date range for this week
+    const weekStartDate = new Date(createdDate.getTime() + (weekNumber - 1) * 7 * 24 * 60 * 60 * 1000)
+    const weekEndDate = new Date(weekStartDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const weekStartStr = weekStartDate.toISOString().split('T')[0]
+    const weekEndStr = weekEndDate.toISOString().split('T')[0]
+
+    // Count morning pages for this week
+    const morningPagesCount = await db.prepare(
+      'SELECT COUNT(*) as count FROM MorningPages WHERE user_id = ? AND entry_date >= ? AND entry_date < ?'
+    ).bind(userId, weekStartStr, weekEndStr).first()
+
+    const morningPageDone = morningPagesCount.count >= 7
+
+    // Get current artist_date_done status
+    const existing = await db.prepare(
+      'SELECT artist_date_done FROM Progress WHERE user_id = ? AND week_number = ?'
+    ).bind(userId, weekNumber).first()
+
+    const artistDateDone = existing ? existing.artist_date_done === 1 : false
+
+    // Update Progress
+    await updateProgress(db, userId, weekNumber, morningPageDone, artistDateDone)
+  } catch (error) {
+    console.error('Failed to auto-update morning page progress:', error)
   }
 }
 
@@ -338,6 +390,9 @@ async function handleCreateArtistDate(request, db, userId) {
       ).bind(userId, week_number, wentOut, excitedVal).run()
     }
 
+    // Auto-update Progress table
+    await autoUpdateArtistDateProgress(db, userId, week_number)
+
     return jsonResponse({
       ok: true,
       message: 'Artist date saved successfully',
@@ -353,6 +408,43 @@ async function handleCreateArtistDate(request, db, userId) {
       message: 'Failed to save artist date',
       error: error.message 
     }, 500)
+  }
+}
+
+/**
+ * Auto-update Progress.artist_date_done when an artist date is saved
+ */
+async function autoUpdateArtistDateProgress(db, userId, weekNumber) {
+  try {
+    // Get user's creation date
+    const user = await db.prepare(
+      'SELECT created_at FROM Users WHERE id = ?'
+    ).bind(userId).first()
+
+    if (!user) return
+
+    const createdDate = new Date(user.created_at)
+
+    // Calculate date range for this week
+    const weekStartDate = new Date(createdDate.getTime() + (weekNumber - 1) * 7 * 24 * 60 * 60 * 1000)
+    const weekEndDate = new Date(weekStartDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const weekStartStr = weekStartDate.toISOString().split('T')[0]
+    const weekEndStr = weekEndDate.toISOString().split('T')[0]
+
+    // Count morning pages for this week
+    const morningPagesCount = await db.prepare(
+      'SELECT COUNT(*) as count FROM MorningPages WHERE user_id = ? AND entry_date >= ? AND entry_date < ?'
+    ).bind(userId, weekStartStr, weekEndStr).first()
+
+    const morningPageDone = morningPagesCount.count >= 7
+
+    // Artist date is done (entry exists)
+    const artistDateDone = true
+
+    // Update Progress
+    await updateProgress(db, userId, weekNumber, morningPageDone, artistDateDone)
+  } catch (error) {
+    console.error('Failed to auto-update artist date progress:', error)
   }
 }
 
@@ -401,10 +493,10 @@ async function handleGetArtistDate(url, db, userId) {
 }
 
 /**
- * GET /api/progress
- * Get user's progress information
+ * GET /api/progress?week_number=N
+ * Get user's progress information for a specific week
  */
-async function handleGetProgress(db, userId) {
+async function handleGetProgress(url, db, userId) {
   try {
     // Get user's creation date
     const user = await db.prepare(
@@ -424,28 +516,72 @@ async function handleGetProgress(db, userId) {
     const daysSinceCreation = Math.floor((today - createdDate) / (1000 * 60 * 60 * 24))
     const currentWeek = Math.min(Math.floor(daysSinceCreation / 7) + 1, 12)
 
-    // Count morning pages for last 7 days
-    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const morningPagesCount = await db.prepare(
-      'SELECT COUNT(*) as count FROM MorningPages WHERE user_id = ? AND entry_date >= ?'
-    ).bind(userId, sevenDaysAgo).first()
+    // Get requested week number (default to current week)
+    const requestedWeek = url.searchParams.get('week_number') 
+      ? parseInt(url.searchParams.get('week_number')) 
+      : currentWeek
 
-    // Get artist date for current week
+    // Validate week number
+    if (requestedWeek < 1 || requestedWeek > 12) {
+      return jsonResponse({ 
+        ok: false, 
+        message: 'week_number must be between 1 and 12' 
+      }, 400)
+    }
+
+    // Calculate date range for the requested week
+    const weekStartDate = new Date(createdDate.getTime() + (requestedWeek - 1) * 7 * 24 * 60 * 60 * 1000)
+    const weekEndDate = new Date(weekStartDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+    // Get daily status for the 7 days of the requested week
+    const dailyStatus = []
+    for (let day = 0; day < 7; day++) {
+      const currentDay = new Date(weekStartDate.getTime() + day * 24 * 60 * 60 * 1000)
+      const dateStr = currentDay.toISOString().split('T')[0]
+      
+      const morningPage = await db.prepare(
+        'SELECT character_count FROM MorningPages WHERE user_id = ? AND entry_date = ?'
+      ).bind(userId, dateStr).first()
+
+      dailyStatus.push({
+        day: day + 1,
+        date: dateStr,
+        done: !!morningPage,
+        character_count: morningPage ? morningPage.character_count : 0
+      })
+    }
+
+    // Count morning pages for this week
+    const weekStartStr = weekStartDate.toISOString().split('T')[0]
+    const weekEndStr = weekEndDate.toISOString().split('T')[0]
+    const morningPagesCount = await db.prepare(
+      'SELECT COUNT(*) as count FROM MorningPages WHERE user_id = ? AND entry_date >= ? AND entry_date < ?'
+    ).bind(userId, weekStartStr, weekEndStr).first()
+
+    // Get artist date for requested week
     const artistDate = await db.prepare(
       'SELECT went_out, excited FROM ArtistDates WHERE user_id = ? AND week_number = ?'
-    ).bind(userId, currentWeek).first()
+    ).bind(userId, requestedWeek).first()
+
+    // Update or create Progress record
+    await updateProgress(db, userId, requestedWeek, morningPagesCount.count >= 7, !!artistDate)
 
     return jsonResponse({
       ok: true,
       data: {
+        week_number: requestedWeek,
         current_week: currentWeek,
         morning_pages_this_week: morningPagesCount.count || 0,
         morning_page_done: (morningPagesCount.count || 0) >= 7,
         artist_date_done: artistDate ? (artistDate.went_out === 1 || artistDate.excited === 1) : false,
-        artist_date_details: artistDate ? {
+        daily_status: dailyStatus,
+        artist_date: artistDate ? {
           went_out: artistDate.went_out === 1,
           excited: artistDate.excited === 1
-        } : null
+        } : {
+          went_out: false,
+          excited: false
+        }
       }
     })
   } catch (error) {
@@ -454,6 +590,145 @@ async function handleGetProgress(db, userId) {
       message: 'Failed to get progress',
       error: error.message 
     }, 500)
+  }
+}
+
+/**
+ * GET /api/statistics
+ * Get comprehensive statistics for the user's 12-week journey
+ */
+async function handleGetStatistics(db, userId) {
+  try {
+    // Get user's creation date
+    const user = await db.prepare(
+      'SELECT created_at FROM Users WHERE id = ?'
+    ).bind(userId).first()
+
+    if (!user) {
+      return jsonResponse({ 
+        ok: false, 
+        message: 'User not found' 
+      }, 404)
+    }
+
+    // Total days written
+    const totalDaysResult = await db.prepare(
+      'SELECT COUNT(*) as count FROM MorningPages WHERE user_id = ?'
+    ).bind(userId).first()
+    const totalDays = totalDaysResult.count || 0
+
+    // Total character count
+    const totalCharsResult = await db.prepare(
+      'SELECT SUM(character_count) as total FROM MorningPages WHERE user_id = ?'
+    ).bind(userId).first()
+    const totalCharacters = totalCharsResult.total || 0
+
+    // Artist date weeks count
+    const artistDateWeeksResult = await db.prepare(
+      'SELECT COUNT(*) as count FROM ArtistDates WHERE user_id = ? AND (went_out = 1 OR excited = 1)'
+    ).bind(userId).first()
+    const artistDateWeeks = artistDateWeeksResult.count || 0
+
+    // Weekly stats (character count per week)
+    const weeklyStats = []
+    const createdDate = new Date(user.created_at)
+    
+    for (let week = 1; week <= 12; week++) {
+      const weekStartDate = new Date(createdDate.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000)
+      const weekEndDate = new Date(weekStartDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+      const weekStartStr = weekStartDate.toISOString().split('T')[0]
+      const weekEndStr = weekEndDate.toISOString().split('T')[0]
+
+      const weekData = await db.prepare(
+        'SELECT COUNT(*) as days_written, SUM(character_count) as total_characters FROM MorningPages WHERE user_id = ? AND entry_date >= ? AND entry_date < ?'
+      ).bind(userId, weekStartStr, weekEndStr).first()
+
+      weeklyStats.push({
+        week_number: week,
+        total_characters: weekData.total_characters || 0,
+        days_written: weekData.days_written || 0
+      })
+    }
+
+    // Daily activity (all 84 days)
+    const dailyActivity = []
+    for (let week = 1; week <= 12; week++) {
+      for (let day = 0; day < 7; day++) {
+        const weekStartDate = new Date(createdDate.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000)
+        const currentDay = new Date(weekStartDate.getTime() + day * 24 * 60 * 60 * 1000)
+        const dateStr = currentDay.toISOString().split('T')[0]
+        
+        const morningPage = await db.prepare(
+          'SELECT character_count FROM MorningPages WHERE user_id = ? AND entry_date = ?'
+        ).bind(userId, dateStr).first()
+
+        dailyActivity.push({
+          date: dateStr,
+          character_count: morningPage ? morningPage.character_count : 0,
+          week_number: week,
+          day_of_week: day + 1
+        })
+      }
+    }
+
+    // Artist date history
+    const artistDateHistory = []
+    for (let week = 1; week <= 12; week++) {
+      const artistDate = await db.prepare(
+        'SELECT went_out, excited FROM ArtistDates WHERE user_id = ? AND week_number = ?'
+      ).bind(userId, week).first()
+
+      artistDateHistory.push({
+        week_number: week,
+        went_out: artistDate ? artistDate.went_out === 1 : false,
+        excited: artistDate ? artistDate.excited === 1 : false
+      })
+    }
+
+    return jsonResponse({
+      ok: true,
+      data: {
+        summary: {
+          total_days: totalDays,
+          total_days_possible: 84,
+          total_characters: totalCharacters,
+          artist_date_weeks: artistDateWeeks,
+          artist_date_weeks_possible: 12
+        },
+        weekly_stats: weeklyStats,
+        daily_activity: dailyActivity,
+        artist_date_history: artistDateHistory
+      }
+    })
+  } catch (error) {
+    return jsonResponse({ 
+      ok: false, 
+      message: 'Failed to get statistics',
+      error: error.message 
+    }, 500)
+  }
+}
+
+/**
+ * Update Progress table
+ */
+async function updateProgress(db, userId, weekNumber, morningPageDone, artistDateDone) {
+  try {
+    const existing = await db.prepare(
+      'SELECT id FROM Progress WHERE user_id = ? AND week_number = ?'
+    ).bind(userId, weekNumber).first()
+
+    if (existing) {
+      await db.prepare(
+        'UPDATE Progress SET morning_page_done = ?, artist_date_done = ?, updated_at = datetime("now") WHERE id = ?'
+      ).bind(morningPageDone ? 1 : 0, artistDateDone ? 1 : 0, existing.id).run()
+    } else {
+      await db.prepare(
+        'INSERT INTO Progress (user_id, week_number, morning_page_done, artist_date_done, updated_at) VALUES (?, ?, ?, ?, datetime("now"))'
+      ).bind(userId, weekNumber, morningPageDone ? 1 : 0, artistDateDone ? 1 : 0).run()
+    }
+  } catch (error) {
+    console.error('Failed to update progress:', error)
   }
 }
 

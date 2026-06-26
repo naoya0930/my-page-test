@@ -1,35 +1,77 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { progressApi, Progress } from '../api/client'
+import { progressApi } from '../api/client'
 import { useAuth } from '../auth/AuthProvider'
+
+interface DailyStatus {
+  day: number
+  date: string
+  done: boolean
+  character_count: number
+}
+
+interface WeekProgress {
+  current_week: number
+  selected_week: number
+  morning_pages_this_week: number
+  morning_page_done: boolean
+  artist_date_done: boolean
+  artist_date_details: {
+    went_out: boolean
+    excited: boolean
+  } | null
+  daily_status: DailyStatus[]
+}
 
 const HomePage = () => {
   const [loading, setLoading] = useState(true)
-  const [progress, setProgress] = useState<Progress | null>(null)
+  const [progress, setProgress] = useState<WeekProgress | null>(null)
   const [error, setError] = useState('')
+  const [selectedWeek, setSelectedWeek] = useState<number>(1)
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const fetchProgress = async () => {
-      try {
-        setLoading(true)
-        setError('')
-        const response = await progressApi.get()
-        if (response.ok && response.data) {
-          setProgress(response.data)
-        } else {
-          setError(response.message || '進捗の取得に失敗しました。')
+  const fetchProgress = async (weekNumber?: number) => {
+    try {
+      setLoading(true)
+      setError('')
+      const response = await progressApi.get(weekNumber)
+      if (response.ok && response.data) {
+        const data = response.data as any
+        setProgress({
+          current_week: data.current_week,
+          selected_week: weekNumber || data.current_week,
+          morning_pages_this_week: data.morning_pages_this_week || 0,
+          morning_page_done: data.morning_page_done,
+          artist_date_done: data.artist_date_done,
+          artist_date_details: data.artist_date_details,
+          daily_status: data.daily_status || []
+        })
+        // Set initial selected week if not set
+        if (!weekNumber) {
+          setSelectedWeek(data.current_week)
         }
-      } catch (e) {
-        setError('進捗の取得に失敗しました。ログインしているか確認してください。')
-      } finally {
-        setLoading(false)
+      } else {
+        setError(response.message || '進捗の取得に失敗しました。')
       }
+    } catch (e) {
+      setError('進捗の取得に失敗しました。ログインしているか確認してください。')
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchProgress()
   }, [])
+
+  const handleWeekChange = (direction: 'prev' | 'next') => {
+    const newWeek = direction === 'prev' ? selectedWeek - 1 : selectedWeek + 1
+    if (newWeek >= 1 && newWeek <= 12) {
+      setSelectedWeek(newWeek)
+      fetchProgress(newWeek)
+    }
+  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -57,7 +99,7 @@ const HomePage = () => {
           {error}
         </div>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchProgress()}
           className="mt-4 rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
         >
           再読み込み
@@ -65,6 +107,22 @@ const HomePage = () => {
       </div>
     )
   }
+
+  const currentWeek = progress?.current_week ?? 1
+  const isPast = selectedWeek < currentWeek
+  const isFuture = selectedWeek > currentWeek
+  const isCurrent = selectedWeek === currentWeek
+
+  // Visual styling based on time period
+  const weekCardClass = isPast
+    ? 'rounded-3xl border border-slate-300 bg-gradient-to-br from-slate-400 to-slate-500 p-8 text-white shadow-sm grayscale'
+    : isFuture
+    ? 'rounded-3xl border border-slate-300 bg-gradient-to-br from-blue-300 to-blue-400 p-8 text-white shadow-sm opacity-60'
+    : 'rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white shadow-sm'
+
+  const actionButtonClass = isPast || isFuture
+    ? 'opacity-50 pointer-events-none cursor-not-allowed'
+    : ''
 
   return (
     <div className="space-y-6">
@@ -82,11 +140,114 @@ const HomePage = () => {
         </button>
       </div>
 
-      {/* Current Week Card */}
-      <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white shadow-sm">
-        <p className="text-sm font-medium opacity-90">The Artist's Way プログラム</p>
-        <p className="mt-3 text-5xl font-bold">第{progress?.current_week ?? 1}週目</p>
-        <p className="mt-2 text-sm opacity-80">全12週間のうち {progress?.current_week ?? 1} 週目を実施中</p>
+      {/* Week Navigation Card with Time Travel */}
+      <div className={weekCardClass}>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => handleWeekChange('prev')}
+            disabled={selectedWeek <= 1}
+            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="前の週"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <div className="text-center">
+            <p className="text-sm font-medium opacity-90">
+              {isPast && '📖 過去の記録'}
+              {isCurrent && '✨ 現在実施中'}
+              {isFuture && '🔒 未来の週'}
+            </p>
+            <p className="mt-3 text-5xl font-bold">第{selectedWeek}週目</p>
+            <p className="mt-2 text-sm opacity-80">
+              全12週間のうち {selectedWeek} 週目
+              {!isCurrent && ` (現在は第${currentWeek}週目)`}
+            </p>
+          </div>
+
+          <button
+            onClick={() => handleWeekChange('next')}
+            disabled={selectedWeek >= 12}
+            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="次の週"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {!isCurrent && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => {
+                setSelectedWeek(currentWeek)
+                fetchProgress(currentWeek)
+              }}
+              className="rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/30"
+            >
+              現在の週に戻る
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Daily Status Grid - Morning Pages */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-900">モーニングページ（7日間）</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          {progress?.morning_pages_this_week ?? 0} / 7 ページ完了
+        </p>
+        
+        <div className="mt-4 grid grid-cols-7 gap-2">
+          {progress?.daily_status.map((day) => (
+            <div
+              key={day.day}
+              className={`group relative flex flex-col items-center justify-center rounded-lg border-2 p-3 transition ${
+                day.done
+                  ? 'border-teal-500 bg-teal-50'
+                  : 'border-dashed border-slate-300 bg-slate-50'
+              }`}
+              title={`${day.date}: ${day.character_count}文字`}
+            >
+              <div className="text-xs font-medium text-slate-600">Day {day.day}</div>
+              {day.done ? (
+                <>
+                  <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-white">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {day.character_count.toLocaleString()}字
+                  </div>
+                </>
+              ) : (
+                <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-400">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Tooltip on hover */}
+              <div className="pointer-events-none absolute -top-16 left-1/2 z-10 hidden -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                <p className="whitespace-nowrap font-medium">{day.date}</p>
+                <p className="whitespace-nowrap">{day.character_count.toLocaleString()} 文字</p>
+                <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full bg-indigo-600 transition-all"
+            style={{ width: `${Math.min(((progress?.morning_pages_this_week ?? 0) / 7) * 100, 100)}%` }}
+          ></div>
+        </div>
       </div>
 
       {/* Progress Summary */}
@@ -101,14 +262,8 @@ const HomePage = () => {
             )}
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            今週: {progress?.morning_pages_this_week ?? 0} / 7 ページ
+            第{selectedWeek}週: {progress?.morning_pages_this_week ?? 0} / 7 ページ
           </p>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full bg-indigo-600 transition-all"
-              style={{ width: `${Math.min(((progress?.morning_pages_this_week ?? 0) / 7) * 100, 100)}%` }}
-            ></div>
-          </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -126,25 +281,38 @@ const HomePage = () => {
               <p>✓ わくわく: {progress.artist_date_details.excited ? 'はい' : 'いいえ'}</p>
             </div>
           ) : (
-            <p className="mt-2 text-sm text-slate-600">今週の記録はまだありません</p>
+            <p className="mt-2 text-sm text-slate-600">第{selectedWeek}週の記録はまだありません</p>
           )}
         </div>
       </div>
 
       {/* Action Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 sm:grid-cols-2 ${actionButtonClass}`}>
         <Link
           to="/morning-page"
-          className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+          className={`group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
+            isPast || isFuture ? 'pointer-events-none' : ''
+          }`}
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-slate-900">モーニングページ</h3>
+            <h3 className="text-xl font-semibold text-slate-900">
+              モーニングページ
+              {(isPast || isFuture) && (
+                <span className="ml-2 text-sm font-normal text-slate-500">
+                  {isPast ? '（閲覧のみ）' : '（ロック中）'}
+                </span>
+              )}
+            </h3>
             <svg className="h-6 w-6 text-slate-400 transition group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            {progress?.morning_page_done
+            {isPast
+              ? '過去の記録を閲覧できます'
+              : isFuture
+              ? 'まだ記録できません'
+              : progress?.morning_page_done
               ? '今週は7ページ達成しました！'
               : '今日の思考を記録しましょう'}
           </p>
@@ -152,16 +320,29 @@ const HomePage = () => {
 
         <Link
           to="/artist-date"
-          className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+          className={`group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
+            isPast || isFuture ? 'pointer-events-none' : ''
+          }`}
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-slate-900">アーティストデート</h3>
+            <h3 className="text-xl font-semibold text-slate-900">
+              アーティストデート
+              {(isPast || isFuture) && (
+                <span className="ml-2 text-sm font-normal text-slate-500">
+                  {isPast ? '（閲覧のみ）' : '（ロック中）'}
+                </span>
+              )}
+            </h3>
             <svg className="h-6 w-6 text-slate-400 transition group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            {progress?.artist_date_done
+            {isPast
+              ? '過去の記録を閲覧できます'
+              : isFuture
+              ? 'まだ記録できません'
+              : progress?.artist_date_done
               ? '今週の記録は完了しています'
               : '今週のクリエイティブな時間を記録'}
           </p>

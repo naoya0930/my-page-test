@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import MorningPage from './pages/MorningPage'
 import ArtistDatePage from './pages/ArtistDatePage'
+import StatisticsPage from './pages/StatisticsPage'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -23,6 +24,7 @@ function App() {
             <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
             <Route path="/morning-page" element={<ProtectedRoute><MorningPage /></ProtectedRoute>} />
             <Route path="/artist-date" element={<ProtectedRoute><ArtistDatePage /></ProtectedRoute>} />
+            <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
           </Routes>
         </Layout>
       </BrowserRouter>

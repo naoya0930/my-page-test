@@ -134,9 +134,22 @@ export const artistDatesApi = {
  */
 export const progressApi = {
   /**
-   * Get current user's progress
+   * Get current user's progress for a specific week or current week
    */
-  async get(): Promise<ApiResponse<Progress>> {
-    return apiFetch('/progress')
+  async get(weekNumber?: number): Promise<ApiResponse<Progress>> {
+    const params = weekNumber ? `?week_number=${weekNumber}` : ''
+    return apiFetch(`/progress${params}`)
+  }
+}
+
+/**
+ * Statistics API
+ */
+export const statisticsApi = {
+  /**
+   * Get statistics for all 12 weeks
+   */
+  async get(): Promise<ApiResponse<any>> {
+    return apiFetch('/statistics')
   }
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { artistDatesApi, progressApi } from '../api/client'
 
 const ArtistDatePage = () => {
+  const navigate = useNavigate()
   const [wentOut, setWentOut] = useState(false)
   const [excited, setExcited] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -55,8 +56,10 @@ const ArtistDatePage = () => {
 
       if (response.ok) {
         setSaved(true)
-        // Auto-hide success message after 3 seconds
-        setTimeout(() => setSaved(false), 3000)
+        // Auto-redirect to home after successful save
+        setTimeout(() => {
+          navigate('/home')
+        }, 1000) // Brief delay to show success message
       } else {
         setError(response.message || '保存に失敗しました。再度お試しください。')
       }
