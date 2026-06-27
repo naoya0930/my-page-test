@@ -1,36 +1,52 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { morningPagesApi } from '../api/client'
 
+const todayStr = () => new Date().toISOString().split('T')[0]
+
+// Build a human-readable title for the target date.
+const formatTitle = (date: string): string => {
+  if (date === todayStr()) return '今日のモーニングページ'
+  const [y, m, d] = date.split('-').map(Number)
+  return `${y}年${m}月${d}日の記録`
+}
+
 const MorningPage = () => {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  // Target date from the ?date= query (set when editing a specific day from the
+  // home grid). Falls back to today for a malformed or missing value.
+  const dateParam = searchParams.get('date') || ''
+  const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayStr()
+
   const [content, setContent] = useState('')
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const fetchToday = async () => {
+    const fetchEntry = async () => {
       try {
         setLoading(true)
         setError('')
-        
-        // Get today's date in YYYY-MM-DD format
-        const today = new Date().toISOString().split('T')[0]
-        const response = await morningPagesApi.get(today)
-        
+
+        const response = await morningPagesApi.get(targetDate)
+
         if (response.ok && response.data) {
           setContent(response.data.content || '')
+        } else {
+          setContent('')
         }
       } catch (e) {
-        setError('当日の保存データの取得に失敗しました。ログインしているか確認してください。')
+        setError('保存データの取得に失敗しました。ログインしているか確認してください。')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchToday()
-  }, [])
+    fetchEntry()
+  }, [targetDate])
 
   const handleSave = async () => {
     // Validation: Check if content is empty
@@ -40,22 +56,20 @@ const MorningPage = () => {
     }
 
     setError('')
-    setSaved(false)
     setSaving(true)
 
     try {
-      const response = await morningPagesApi.create(content)
-      
+      const response = await morningPagesApi.create(content, targetDate)
+
       if (response.ok) {
-        setSaved(true)
-        // Auto-hide success message after 3 seconds
-        setTimeout(() => setSaved(false), 3000)
+        // On a successful write, leave the screen and return to the home page.
+        navigate('/home')
       } else {
         setError(response.message || '保存に失敗しました。再度お試しください。')
+        setSaving(false)
       }
     } catch (e) {
       setError('保存に失敗しました。再度お試しください。')
-    } finally {
       setSaving(false)
     }
   }
@@ -80,8 +94,8 @@ const MorningPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-semibold text-slate-900">モーニングページ</h2>
-          <p className="mt-2 text-sm text-slate-600">今日の思いを自由に書いてください</p>
+          <h2 className="text-3xl font-semibold text-slate-900">{formatTitle(targetDate)}</h2>
+          <p className="mt-2 text-sm text-slate-600">その日の思いを自由に書いてください</p>
         </div>
         <Link
           to="/home"
@@ -98,13 +112,6 @@ const MorningPage = () => {
           {error && (
             <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
-            </div>
-          )}
-
-          {/* Success Message */}
-          {saved && (
-            <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              ✓ 保存しました。
             </div>
           )}
 
@@ -141,7 +148,7 @@ const MorningPage = () => {
                   保存中...
                 </>
               ) : (
-                '保存'
+                '保存する'
               )}
             </button>
           </div>

@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 
+type Mode = 'login' | 'signup'
+
 const LoginPage = () => {
+  const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const { signInWithEmail, signInWithGoogle, isAuthenticated } = useAuth()
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isAuthenticated, sessionExpired } = useAuth()
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -17,15 +22,23 @@ const LoginPage = () => {
     }
   }, [isAuthenticated, navigate])
 
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError('')
+    setInfo('')
+    setConfirmPassword('')
+  }
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setInfo('')
 
     try {
       const { error } = await signInWithEmail(email, password)
       if (error) {
-        setError(error.message || '認証に失敗しました。再度お試しください。')
+        setError(error.message || 'メールアドレスまたはパスワードが違います。')
       } else {
         navigate('/home')
       }
@@ -36,9 +49,43 @@ const LoginPage = () => {
     }
   }
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setInfo('')
+
+    // Client-side validation
+    if (password.length < 6) {
+      setError('パスワードは6文字以上で入力してください。')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('パスワードが一致しません。')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { error, needsEmailConfirmation } = await signUpWithEmail(email, password)
+      if (error) {
+        setError(error.message || 'アカウントの作成に失敗しました。再度お試しください。')
+      } else if (needsEmailConfirmation) {
+        setInfo('確認メールを送信しました。メール内のリンクから登録を完了してください。')
+      } else {
+        // Email confirmation disabled — the user is signed in automatically.
+        navigate('/home')
+      }
+    } catch (e) {
+      setError('アカウントの作成に失敗しました。再度お試しください。')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleGoogleLogin = async () => {
     setLoading(true)
     setError('')
+    setInfo('')
 
     try {
       const { error } = await signInWithGoogle()
@@ -53,20 +100,55 @@ const LoginPage = () => {
     }
   }
 
+  const isSignup = mode === 'signup'
+
+  const tabClass = (active: boolean) =>
+    `flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
+      active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+    }`
+
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm max-w-md mx-auto">
-      <h2 className="text-3xl font-semibold text-slate-900">ログイン</h2>
-      <p className="mt-4 text-slate-600">サービスを利用するにはログインが必要です。</p>
+      <h2 className="text-3xl font-semibold text-slate-900">
+        {isSignup ? 'アカウント作成' : 'ログイン'}
+      </h2>
+      <p className="mt-4 text-slate-600">
+        {isSignup
+          ? '新しいアカウントを作成してプログラムを始めましょう。'
+          : 'サービスを利用するにはログインが必要です。'}
+      </p>
+
+      {/* Mode switch tabs */}
+      <div className="mt-6 flex gap-1 rounded-full border border-slate-200 bg-slate-50 p-1">
+        <button type="button" onClick={() => switchMode('login')} className={tabClass(!isSignup)}>
+          ログイン
+        </button>
+        <button type="button" onClick={() => switchMode('signup')} className={tabClass(isSignup)}>
+          新規アカウント作成
+        </button>
+      </div>
 
       <div className="mt-8 space-y-6">
+        {sessionExpired && !error && !isSignup && (
+          <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            セッションの有効期限が切れました。お手数ですが、もう一度ログインしてください。
+          </div>
+        )}
+
         {error && (
           <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* Email Login Form */}
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        {info && (
+          <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {info}
+          </div>
+        )}
+
+        {/* Email Login / Signup Form */}
+        <form onSubmit={isSignup ? handleSignup : handleEmailLogin} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
               メールアドレス
@@ -92,17 +174,42 @@ const LoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
               className="w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="••••••••"
             />
           </div>
+
+          {isSignup && (
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
+                パスワード（確認）
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="••••••••"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? 'ログイン中...' : 'メールアドレスでログイン'}
+            {loading
+              ? isSignup
+                ? '作成中...'
+                : 'ログイン中...'
+              : isSignup
+              ? 'アカウントを作成する'
+              : 'メールアドレスでログイン'}
           </button>
         </form>
 
@@ -141,7 +248,7 @@ const LoginPage = () => {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          {loading ? 'ログイン中...' : 'Googleでログイン'}
+          {loading ? '処理中...' : 'Googleでログイン'}
         </button>
       </div>
     </div>

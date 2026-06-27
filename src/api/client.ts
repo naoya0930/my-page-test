@@ -28,6 +28,7 @@ export interface ArtistDate {
 
 export interface Progress {
   current_week: number
+  current_day: number
   morning_pages_this_week: number
   morning_page_done: boolean
   artist_date_done: boolean
@@ -85,12 +86,13 @@ async function apiFetch<T = any>(
  */
 export const morningPagesApi = {
   /**
-   * Create or update a morning page for today
+   * Create or update a morning page.
+   * When `date` (YYYY-MM-DD) is omitted the backend uses today's date.
    */
-  async create(content: string): Promise<ApiResponse<{ entry_date: string; character_count: number }>> {
+  async create(content: string, date?: string): Promise<ApiResponse<{ entry_date: string; character_count: number }>> {
     return apiFetch('/morning-pages', {
       method: 'POST',
-      body: JSON.stringify({ content })
+      body: JSON.stringify(date ? { content, entry_date: date } : { content })
     })
   },
 

@@ -59,11 +59,21 @@ export default {
         return jsonResponse({ ok: false, message: auth.message }, auth.status)
       }
 
-      // Get or create user in D1
-      const userId = await getOrCreateUser(env.DB, auth.supabase_user_id, auth.email)
-      
-      // Handle API requests
-      return await handleApiRequest(request, env, pathname, userId, auth)
+      // Get or create user in D1. Wrap in try/catch so any DB error is returned
+      // as a JSON response instead of bubbling up as a non-JSON 500, which the
+      // frontend cannot parse (it would surface a generic, misleading error).
+      try {
+        const userId = await getOrCreateUser(env.DB, auth.supabase_user_id, auth.email)
+
+        // Handle API requests
+        return await handleApiRequest(request, env, pathname, userId, auth)
+      } catch (error) {
+        return jsonResponse({
+          ok: false,
+          message: 'Internal server error',
+          error: error.message
+        }, 500)
+      }
     }
 
     // 404
@@ -138,7 +148,7 @@ async function getOrCreateUser(db, supabase_user_id, email) {
     if (existingUser) {
       // Update last_active_at
       await db.prepare(
-        'UPDATE Users SET last_active_at = datetime("now") WHERE id = ?'
+        'UPDATE Users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind(existingUser.id).run()
       return existingUser.id
     }
@@ -146,7 +156,7 @@ async function getOrCreateUser(db, supabase_user_id, email) {
     // Create new user
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     await db.prepare(
-      'INSERT INTO Users (id, supabase_user_id, email, created_at, last_active_at) VALUES (?, ?, ?, datetime("now"), datetime("now"))'
+      'INSERT INTO Users (id, supabase_user_id, email, created_at, last_active_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
     ).bind(userId, supabase_user_id, email).run()
 
     return userId
@@ -226,17 +236,37 @@ async function handleApiRequest(request, env, pathname, userId, auth) {
 async function handleCreateMorningPage(request, db, userId) {
   try {
     const body = await request.json()
-    const { content } = body
+    const { content, entry_date } = body
 
     // Validation
     if (!content || content.trim().length === 0) {
-      return jsonResponse({ 
-        ok: false, 
-        message: 'Content is required and cannot be empty' 
+      return jsonResponse({
+        ok: false,
+        message: 'Content is required and cannot be empty'
       }, 400)
     }
 
-    const entryDate = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+
+    // entry_date is optional. When provided (editing a specific day from the
+    // home grid), it must be a valid YYYY-MM-DD and must not be in the future.
+    let entryDate = today
+    if (entry_date !== undefined && entry_date !== null && entry_date !== '') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(entry_date)) {
+        return jsonResponse({
+          ok: false,
+          message: 'entry_date must be in YYYY-MM-DD format'
+        }, 400)
+      }
+      if (entry_date > today) {
+        return jsonResponse({
+          ok: false,
+          message: 'entry_date cannot be in the future'
+        }, 400)
+      }
+      entryDate = entry_date
+    }
+
     const characterCount = content.length
 
     // Check if entry already exists (UPSERT logic)
@@ -247,12 +277,12 @@ async function handleCreateMorningPage(request, db, userId) {
     if (existing) {
       // Update existing entry
       await db.prepare(
-        'UPDATE MorningPages SET content = ?, character_count = ?, updated_at = datetime("now") WHERE id = ?'
+        'UPDATE MorningPages SET content = ?, character_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind(content, characterCount, existing.id).run()
     } else {
       // Insert new entry
       await db.prepare(
-        'INSERT INTO MorningPages (user_id, entry_date, content, character_count, created_at, updated_at) VALUES (?, ?, ?, ?, datetime("now"), datetime("now"))'
+        'INSERT INTO MorningPages (user_id, entry_date, content, character_count, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
       ).bind(userId, entryDate, content, characterCount).run()
     }
 
@@ -381,12 +411,12 @@ async function handleCreateArtistDate(request, db, userId) {
     if (existing) {
       // Update existing entry
       await db.prepare(
-        'UPDATE ArtistDates SET went_out = ?, excited = ?, updated_at = datetime("now") WHERE id = ?'
+        'UPDATE ArtistDates SET went_out = ?, excited = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind(wentOut, excitedVal, existing.id).run()
     } else {
       // Insert new entry
       await db.prepare(
-        'INSERT INTO ArtistDates (user_id, week_number, went_out, excited, created_at, updated_at) VALUES (?, ?, ?, ?, datetime("now"), datetime("now"))'
+        'INSERT INTO ArtistDates (user_id, week_number, went_out, excited, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
       ).bind(userId, week_number, wentOut, excitedVal).run()
     }
 
@@ -515,6 +545,8 @@ async function handleGetProgress(url, db, userId) {
     const today = new Date()
     const daysSinceCreation = Math.floor((today - createdDate) / (1000 * 60 * 60 * 24))
     const currentWeek = Math.min(Math.floor(daysSinceCreation / 7) + 1, 12)
+    // Overall day number within the 84-day (12-week) program, clamped to 1..84.
+    const currentDay = Math.min(Math.max(daysSinceCreation + 1, 1), 84)
 
     // Get requested week number (default to current week)
     const requestedWeek = url.searchParams.get('week_number') 
@@ -571,6 +603,7 @@ async function handleGetProgress(url, db, userId) {
       data: {
         week_number: requestedWeek,
         current_week: currentWeek,
+        current_day: currentDay,
         morning_pages_this_week: morningPagesCount.count || 0,
         morning_page_done: (morningPagesCount.count || 0) >= 7,
         artist_date_done: artistDate ? (artistDate.went_out === 1 || artistDate.excited === 1) : false,
@@ -720,11 +753,11 @@ async function updateProgress(db, userId, weekNumber, morningPageDone, artistDat
 
     if (existing) {
       await db.prepare(
-        'UPDATE Progress SET morning_page_done = ?, artist_date_done = ?, updated_at = datetime("now") WHERE id = ?'
+        'UPDATE Progress SET morning_page_done = ?, artist_date_done = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind(morningPageDone ? 1 : 0, artistDateDone ? 1 : 0, existing.id).run()
     } else {
       await db.prepare(
-        'INSERT INTO Progress (user_id, week_number, morning_page_done, artist_date_done, updated_at) VALUES (?, ?, ?, ?, datetime("now"))'
+        'INSERT INTO Progress (user_id, week_number, morning_page_done, artist_date_done, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)'
       ).bind(userId, weekNumber, morningPageDone ? 1 : 0, artistDateDone ? 1 : 0).run()
     }
   } catch (error) {
