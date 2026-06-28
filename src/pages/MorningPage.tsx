@@ -63,7 +63,9 @@ const MorningPage = () => {
 
       if (response.ok) {
         // On a successful write, leave the screen and return to the home page.
-        navigate('/home')
+        // Pass a toast message via navigation state so /home can show a
+        // transient "saved" confirmation after the redirect.
+        navigate('/home', { state: { toast: 'モーニングページを保存しました' } })
       } else {
         setError(response.message || '保存に失敗しました。再度お試しください。')
         setSaving(false)

@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { progressApi } from '../api/client'
 import { useAuth } from '../auth/AuthProvider'
+import Toast from '../components/Toast'
+import CompletionModal from '../components/CompletionModal'
+
+// Total number of days in the 12-week program (12 weeks × 7 days).
+const TOTAL_DAYS = 84
 
 interface DailyStatus {
   day: number
@@ -30,8 +35,22 @@ const HomePage = () => {
   const [error, setError] = useState('')
   const [authFailed, setAuthFailed] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState<number>(1)
+  const [toast, setToast] = useState('')
+  const [showCompletion, setShowCompletion] = useState(false)
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Show a toast when redirected here with a `toast` navigation state
+  // (e.g. after saving a morning page). Clear the state afterwards so the
+  // toast does not reappear on reload or back navigation.
+  useEffect(() => {
+    const state = location.state as { toast?: string } | null
+    if (state?.toast) {
+      setToast(state.toast)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location, navigate])
 
   // Heuristic: does this error mean the session/auth is invalid (so retrying
   // is pointless and the user must re-authenticate)?
@@ -67,6 +86,10 @@ const HomePage = () => {
         // Set initial selected week if not set
         if (!weekNumber) {
           setSelectedWeek(data.current_week)
+          // On initial load, celebrate program completion (Day 84 reached).
+          if ((data.current_day ?? 0) >= TOTAL_DAYS) {
+            setShowCompletion(true)
+          }
         }
       } else {
         const message = response.message || '進捗の取得に失敗しました。'
@@ -206,12 +229,12 @@ const HomePage = () => {
         </button>
       </div>
 
-      {/* Overall progress indicator: Day XX / 84 */}
+      {/* Overall progress indicator: 本日: Day X / 84 */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
         <p className="text-sm font-medium text-slate-500">12週間プログラムの進捗</p>
         <p className="mt-1 text-3xl font-bold text-slate-900">
-          Day <span className="text-indigo-600">{progress?.current_day ?? 1}</span>
-          <span className="text-slate-400"> / 84</span>
+          本日: Day <span className="text-indigo-600">{progress?.current_day ?? 1}</span>
+          <span className="text-slate-400"> / {TOTAL_DAYS}</span>
         </p>
       </div>
 
@@ -221,11 +244,11 @@ const HomePage = () => {
           <button
             onClick={() => handleWeekChange('prev')}
             disabled={selectedWeek <= 1}
-            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-full bg-white/25 p-3 text-white shadow-sm ring-1 ring-white/40 transition hover:bg-white/40 disabled:opacity-30 disabled:cursor-not-allowed"
             title="前の週"
           >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
 
@@ -245,15 +268,17 @@ const HomePage = () => {
           <button
             onClick={() => handleWeekChange('next')}
             disabled={selectedWeek >= 12}
-            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="rounded-full bg-white/25 p-3 text-white shadow-sm ring-1 ring-white/40 transition hover:bg-white/40 disabled:opacity-30 disabled:cursor-not-allowed"
             title="次の週"
           >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
 
+        {/* Shown only while viewing a past/future week. Uses a high-contrast
+            white-on-card style so it stands out as the primary action. */}
         {!isCurrent && (
           <div className="mt-4 text-center">
             <button
@@ -261,8 +286,11 @@ const HomePage = () => {
                 setSelectedWeek(currentWeek)
                 fetchProgress(currentWeek)
               }}
-              className="rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/30"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
             >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
               現在の週に戻る
             </button>
           </div>
@@ -271,10 +299,13 @@ const HomePage = () => {
 
       {/* Daily Status Grid - Morning Pages */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">モーニングページ（7日間）</h3>
-        <p className="mt-1 text-sm text-slate-600">
-          {progress?.morning_pages_this_week ?? 0} / 7 ページ完了
-        </p>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900">モーニングページ（今週の実行状況）</h3>
+          {/* X/7 progress as a clear fraction text */}
+          <span className="text-lg font-bold text-indigo-600">
+            {progress?.morning_pages_this_week ?? 0}/7
+          </span>
+        </div>
         
         <div className="mt-4 grid grid-cols-7 gap-2">
           {progress?.daily_status.map((day) => {
@@ -437,6 +468,12 @@ const HomePage = () => {
           </p>
         </Link>
       </div>
+
+      {/* Save confirmation toast (shown after redirect from morning page) */}
+      {toast && <Toast message={toast} onClose={() => setToast('')} />}
+
+      {/* Program completion celebration (Day 84 reached) */}
+      {showCompletion && <CompletionModal onClose={() => setShowCompletion(false)} />}
     </div>
   )
 }

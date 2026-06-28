@@ -9,6 +9,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,6 +28,7 @@ const LoginPage = () => {
     setError('')
     setInfo('')
     setConfirmPassword('')
+    setAgreedToTerms(false)
   }
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -61,6 +63,11 @@ const LoginPage = () => {
     }
     if (password !== confirmPassword) {
       setError('パスワードが一致しません。')
+      return
+    }
+    // Terms of service agreement is mandatory for signup.
+    if (!agreedToTerms) {
+      setError('利用規約への同意が必要です。')
       return
     }
 
@@ -198,9 +205,26 @@ const LoginPage = () => {
             </div>
           )}
 
+          {/* Terms of service agreement (signup only, mandatory) */}
+          {isSignup && (
+            <label htmlFor="agreeTerms" className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+              <input
+                id="agreeTerms"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>
+                <span className="font-medium text-indigo-600">利用規約</span>および
+                <span className="font-medium text-indigo-600">プライバシーポリシー</span>に同意する
+              </span>
+            </label>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (isSignup && !agreedToTerms)}
             className="w-full inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading

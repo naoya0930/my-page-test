@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { statisticsApi } from '../api/client'
 
 interface StatisticsData {
@@ -32,6 +32,9 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<StatisticsData | null>(null)
+  // Single-selected day in the heatmap (radio-like). Null when nothing selected.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchStatistics()
@@ -187,13 +190,23 @@ export default function StatisticsPage() {
       {/* Daily Activity Heatmap */}
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <h2 className="text-xl font-semibold text-slate-900">日次アクティビティヒートマップ</h2>
-        <p className="mt-1 text-sm text-slate-600">12週間×7日間（84日間）の執筆状況</p>
+        <p className="mt-1 text-sm text-slate-600">
+          12週間×7日間（84日間）の執筆状況 — 日付を選択して詳細を確認できます
+        </p>
         <div className="mt-6 overflow-x-auto">
           <div className="grid grid-cols-7 gap-2">
-            {daily_activity.map((day, index) => (
-              <div
+            {daily_activity.map((day, index) => {
+              const isSelected = selectedDate === day.date
+              return (
+              <button
                 key={index}
-                className={`group relative h-12 w-full rounded-lg ${getHeatmapColor(day.character_count)} transition-all hover:scale-105 hover:ring-2 hover:ring-indigo-400`}
+                type="button"
+                // Radio-like single select: clicking the selected day deselects it.
+                onClick={() => setSelectedDate(isSelected ? null : day.date)}
+                aria-pressed={isSelected}
+                className={`group relative h-12 w-full rounded-lg ${getHeatmapColor(day.character_count)} transition-all hover:scale-105 hover:ring-2 hover:ring-indigo-400 ${
+                  isSelected ? 'ring-2 ring-indigo-600 ring-offset-2' : ''
+                }`}
                 title={`${day.date}: ${day.character_count} 文字`}
               >
                 {/* Tooltip on hover */}
@@ -203,8 +216,9 @@ export default function StatisticsPage() {
                   <p className="whitespace-nowrap text-slate-300">Week {day.week_number}, Day {day.day_of_week}</p>
                   <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900"></div>
                 </div>
-              </div>
-            ))}
+              </button>
+              )
+            })}
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
             <span>少ない</span>
@@ -215,6 +229,31 @@ export default function StatisticsPage() {
             <div className="h-4 w-4 rounded bg-teal-700"></div>
             <span>多い</span>
           </div>
+
+          {/* Detail panel for the selected day */}
+          {selectedDate && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-5 py-4">
+              <div className="text-sm text-indigo-900">
+                <span className="font-semibold">{selectedDate}</span> の記録
+                <span className="ml-2 text-indigo-700">
+                  {daily_activity
+                    .find((d) => d.date === selectedDate)
+                    ?.character_count.toLocaleString() ?? 0}{' '}
+                  文字
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/morning-page?date=${selectedDate}`)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                詳細
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -232,21 +271,21 @@ export default function StatisticsPage() {
                 <span className="font-semibold text-slate-900">Week {week.week_number}</span>
                 <div className="flex gap-2">
                   {week.went_out ? (
-                    <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700" title="外出した">
-                      ✓ 外出
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700" title="外出した">
+                      〇 外出
                     </span>
                   ) : (
-                    <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-medium text-slate-500" title="外出していない">
-                      ○ 外出
+                    <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-medium text-slate-400" title="外出していない">
+                      ✕ 外出
                     </span>
                   )}
                   {week.excited ? (
-                    <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700" title="わくわくした">
-                      ✓ わくわく
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700" title="わくわくした">
+                      〇 わくわく
                     </span>
                   ) : (
-                    <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-medium text-slate-500" title="わくわくしていない">
-                      ○ わくわく
+                    <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-medium text-slate-400" title="わくわくしていない">
+                      ✕ わくわく
                     </span>
                   )}
                 </div>
