@@ -7,6 +7,15 @@ type = "javascript"
   ip = "0.0.0.0"
   port = 8787
 
+# 静的アセット（React SPA / dist）配信設定
+# - directory: `npm run build` の成果物
+# - not_found_handling: 未一致パスは index.html を返し、クライアントルーティング（react-router）にフォールバック
+# - binding: Worker から env.ASSETS.fetch(request) で参照
+[assets]
+  directory = "./dist"
+  not_found_handling = "single-page-application"
+  binding = "ASSETS"
+
 [vars]
   CF_D1_DATABASE_ID = "artist_way_db"
 

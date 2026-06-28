@@ -81,7 +81,7 @@
   - 「瞬間の検出」は行わず、**達成条件を満たしている限り、ホームを表示するたびに**祝福スタイルを適用する（リロード・再訪のたびに表示される）。
   - 軽微なワンポイントの動き（アイコンのポップ等）を添える場合は `prefers-reduced-motion` を尊重し、モーション低減設定時は静的表示にとどめる。
 - **判定データ**: `GET /api/progress` の `morning_pages_this_week === 7`（または `daily_status` の `done` が7件）、`artist_date_done === true`（または `artist_date.went_out` / `excited` の方針に従う）。
-  - ※ 「アーティストデート完了」を `went_out` のみで判定するか、`went_out && excited` で判定するかは実装時に確定する（既定は「`went_out` が true なら完了」とする）。
+  - ※ 「アーティストデート完了」は **`went_out`（外出したか）のみ**で判定する（確定）。`excited`（わくわくしたか）は記録するが完了判定には含めない。バックエンドの `artist_date_done`（`GET /api/progress`）および統計の `artist_date_weeks` 集計も `went_out` のみに統一する。
 
 #### レイアウト（参考）
 ```

@@ -12,13 +12,15 @@ export default {
     }
 
     // ヘルスチェックエンドポイント
-    if (pathname === '/') {
+    // 注: `/` は静的アセット(index.html / SPA)に明け渡すため、ヘルスチェックは
+    // `/health` で提供する。
+    if (pathname === '/health') {
       return new Response(
-        JSON.stringify({ 
-          ok: true, 
+        JSON.stringify({
+          ok: true,
           message: 'Cloudflare Workers dev is reachable',
           d1_connected: !!env.DB
-        }), 
+        }),
         {
           status: 200,
           headers: { 'Content-Type': 'application/json;charset=UTF-8' }
@@ -76,7 +78,15 @@ export default {
       }
     }
 
-    // 404
+    // API 以外のリクエストは静的アセット(React SPA)に委譲する。
+    // 既存ファイル(JS/CSS等)はアセット側で直接返るが、未一致パスは
+    // not_found_handling = "single-page-application" により index.html を返し、
+    // react-router がクライアント側でルーティングする。
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request)
+    }
+
+    // 404 (アセットバインディングが無いローカル等のフォールバック)
     return jsonResponse({ ok: false, message: 'Not Found' }, 404)
   }
 }

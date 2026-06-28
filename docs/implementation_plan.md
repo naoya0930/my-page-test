@@ -7,7 +7,7 @@
 
 > **spec4 の実装範囲メモ**: spec4 の追加要件はいずれも**フロントエンド完結**（規約同意チェック、完遂モーダル、本日 Day 表記、X/7 表記、ナビ視認性、保存トースト、統計の日次選択→詳細遷移、軌跡の 〇/✕ 表記）であり、新規バックエンドAPI / スキーマ変更は不要。完遂判定は既存 `GET /api/progress` の `current_day` を再利用する。
 
-> **spec5 の実装範囲メモ**: spec5 の追加要件もいずれも**フロントエンド完結**（統計ヒートマップの本日セル表示、ホーム週次の本日ハイライト、過去週の「(閲覧のみ)」削除・「過去の記録を閲覧できます」の `/statistics` リンク化・「未完了」ラベル削除、達成セレブレーション演出）であり、新規バックエンドAPI / スキーマ変更は不要。「本日」判定はクライアントのシステム日付と各セルの日付（`daily_status[].date` / `daily_activity[].date`）の突合、達成判定は既存 `GET /api/progress` の `morning_pages_this_week` / `artist_date_done` を再利用する。
+> **spec5 の実装範囲メモ**: spec5 の追加要件はほぼ**フロントエンド完結**（統計ヒートマップの本日セル表示、ホーム週次の本日ハイライト、過去週の「(閲覧のみ)」削除・「過去の記録を閲覧できます」の `/statistics` リンク化・「未完了」ラベル削除、達成セレブレーション演出）で、新規バックエンドAPI / スキーマ変更は不要。「本日」判定はクライアントのシステム日付と各セルの日付（`daily_status[].date` / `daily_activity[].date`）の突合、達成判定は既存 `GET /api/progress` の `morning_pages_this_week` / `artist_date_done` を再利用する。ただし**アーティストデート完了判定を `went_out` のみに確定**したため、バックエンド（`workers/index.js` の `artist_date_done` と統計 `artist_date_weeks`）のロジックのみ `went_out` のみへ調整した（API I/F・スキーマは不変）。
 
 ---
 
