@@ -202,6 +202,18 @@ const HomePage = () => {
   const isFuture = selectedWeek > currentWeek
   const isCurrent = selectedWeek === currentWeek
 
+  // Achievement celebration (spec5). Either condition (OR) marks the matching
+  // card as "celebrating" with a gold background and a celebratory icon:
+  //   - Morning pages complete for the week (7/7)
+  //   - Artist date done for the week
+  const mpComplete = (progress?.morning_pages_this_week ?? 0) >= 7
+  const adComplete = progress?.artist_date_done ?? false
+
+  // Gold/celebratory card styling vs. the default white card.
+  const celebrateCardClass =
+    'rounded-3xl border border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-100 p-6 shadow-sm'
+  const plainCardClass = 'rounded-3xl border border-slate-200 bg-white p-6 shadow-sm'
+
   // Visual styling based on time period
   const weekCardClass = isPast
     ? 'rounded-3xl border border-slate-300 bg-gradient-to-br from-slate-400 to-slate-500 p-8 text-white shadow-sm grayscale'
@@ -209,9 +221,9 @@ const HomePage = () => {
     ? 'rounded-3xl border border-slate-300 bg-gradient-to-br from-blue-300 to-blue-400 p-8 text-white shadow-sm opacity-60'
     : 'rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white shadow-sm'
 
-  const actionButtonClass = isPast || isFuture
-    ? 'opacity-50 pointer-events-none cursor-not-allowed'
-    : ''
+  // Future weeks are dimmed/locked. Past weeks are not dimmed because they now
+  // expose an active "view past records" link to the statistics page (spec5).
+  const actionGridClass = isFuture ? 'opacity-60' : ''
 
   return (
     <div className="space-y-6">
@@ -310,6 +322,7 @@ const HomePage = () => {
         <div className="mt-4 grid grid-cols-7 gap-2">
           {progress?.daily_status.map((day) => {
             const isFutureDay = day.date > today
+            const isToday = day.date === today
             return (
             <button
               key={day.day}
@@ -324,13 +337,21 @@ const HomePage = () => {
                 isFutureDay
                   ? 'cursor-not-allowed opacity-50'
                   : 'cursor-pointer hover:border-indigo-400 hover:shadow-sm'
-              }`}
+              } ${isToday ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
               title={
-                isFutureDay
+                isToday
+                  ? `今日 — ${day.date}: ${day.character_count}文字（クリックで編集）`
+                  : isFutureDay
                   ? `${day.date}: まだ記録できません`
                   : `${day.date}: ${day.character_count}文字（クリックで編集）`
               }
             >
+              {/* "今日" badge highlighting the current day in the weekly view */}
+              {isToday && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-1.5 text-[9px] font-bold leading-tight text-white shadow">
+                  今日
+                </span>
+              )}
               <div className="text-xs font-medium text-slate-600">Day {day.day}</div>
               {day.done ? (
                 <>
@@ -372,13 +393,15 @@ const HomePage = () => {
 
       {/* Progress Summary */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        {/* Celebrates with a gold background + crown when the week is complete
+            (7/7). The plain "未完了" label has been removed (spec5). */}
+        <div className={mpComplete ? celebrateCardClass : plainCardClass}>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-slate-900">モーニングページ</h3>
-            {progress?.morning_page_done ? (
-              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">完了</span>
-            ) : (
-              <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700">未完了</span>
+            {mpComplete && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+                <span className="text-base leading-none">👑</span> 7/7 達成
+              </span>
             )}
           </div>
           <p className="mt-2 text-sm text-slate-600">
@@ -386,11 +409,14 @@ const HomePage = () => {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        {/* Celebrates with a gold background + party popper when done. */}
+        <div className={adComplete ? celebrateCardClass : plainCardClass}>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-slate-900">アーティストデート</h3>
-            {progress?.artist_date_done ? (
-              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">完了</span>
+            {adComplete ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+                <span className="text-base leading-none">🎉</span> 完了
+              </span>
             ) : (
               <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700">未完了</span>
             )}
@@ -407,66 +433,92 @@ const HomePage = () => {
       </div>
 
       {/* Action Cards */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${actionButtonClass}`}>
-        <Link
-          to="/morning-page"
-          className={`group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
-            isPast || isFuture ? 'pointer-events-none' : ''
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-slate-900">
-              モーニングページ
-              {(isPast || isFuture) && (
-                <span className="ml-2 text-sm font-normal text-slate-500">
-                  {isPast ? '（閲覧のみ）' : '（ロック中）'}
-                </span>
-              )}
-            </h3>
-            <svg className="h-6 w-6 text-slate-400 transition group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+      <div className={`grid gap-4 sm:grid-cols-2 ${actionGridClass}`}>
+        {/* Morning page card. Past weeks are view-only: instead of linking to
+            the editor, they expose a "view past records" link to /statistics.
+            The "（閲覧のみ）" label has been removed (spec5). */}
+        {isPast ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-semibold text-slate-900">モーニングページ</h3>
+            <Link
+              to="/statistics"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 underline underline-offset-2 transition hover:text-indigo-700"
+            >
+              過去の記録を閲覧できます
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
-          <p className="mt-2 text-sm text-slate-600">
-            {isPast
-              ? '過去の記録を閲覧できます'
-              : isFuture
-              ? 'まだ記録できません'
-              : progress?.morning_page_done
-              ? '今週は7ページ達成しました！'
-              : '今日の思考を記録しましょう'}
-          </p>
-        </Link>
+        ) : (
+          <Link
+            to="/morning-page"
+            className={`group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
+              isFuture ? 'pointer-events-none' : ''
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-slate-900">
+                モーニングページ
+                {isFuture && (
+                  <span className="ml-2 text-sm font-normal text-slate-500">（ロック中）</span>
+                )}
+              </h3>
+              <svg className="h-6 w-6 text-slate-400 transition group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              {isFuture
+                ? 'まだ記録できません'
+                : progress?.morning_page_done
+                ? '今週は7ページ達成しました！'
+                : '今日の思考を記録しましょう'}
+            </p>
+          </Link>
+        )}
 
-        <Link
-          to="/artist-date"
-          className={`group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
-            isPast || isFuture ? 'pointer-events-none' : ''
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-slate-900">
-              アーティストデート
-              {(isPast || isFuture) && (
-                <span className="ml-2 text-sm font-normal text-slate-500">
-                  {isPast ? '（閲覧のみ）' : '（ロック中）'}
-                </span>
-              )}
-            </h3>
-            <svg className="h-6 w-6 text-slate-400 transition group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+        {/* Artist date card. Same past-week treatment as the morning page card. */}
+        {isPast ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-semibold text-slate-900">アーティストデート</h3>
+            <Link
+              to="/statistics"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 underline underline-offset-2 transition hover:text-indigo-700"
+            >
+              過去の記録を閲覧できます
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
-          <p className="mt-2 text-sm text-slate-600">
-            {isPast
-              ? '過去の記録を閲覧できます'
-              : isFuture
-              ? 'まだ記録できません'
-              : progress?.artist_date_done
-              ? '今週の記録は完了しています'
-              : '今週のクリエイティブな時間を記録'}
-          </p>
-        </Link>
+        ) : (
+          <Link
+            to="/artist-date"
+            className={`group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
+              isFuture ? 'pointer-events-none' : ''
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-slate-900">
+                アーティストデート
+                {isFuture && (
+                  <span className="ml-2 text-sm font-normal text-slate-500">（ロック中）</span>
+                )}
+              </h3>
+              <svg className="h-6 w-6 text-slate-400 transition group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              {isFuture
+                ? 'まだ記録できません'
+                : progress?.artist_date_done
+                ? '今週の記録は完了しています'
+                : '今週のクリエイティブな時間を記録'}
+            </p>
+          </Link>
+        )}
       </div>
 
       {/* Save confirmation toast (shown after redirect from morning page) */}

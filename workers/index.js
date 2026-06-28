@@ -606,7 +606,9 @@ async function handleGetProgress(url, db, userId) {
         current_day: currentDay,
         morning_pages_this_week: morningPagesCount.count || 0,
         morning_page_done: (morningPagesCount.count || 0) >= 7,
-        artist_date_done: artistDate ? (artistDate.went_out === 1 || artistDate.excited === 1) : false,
+        // Artist date is "done" based on whether the user went out only;
+        // `excited` is recorded but excluded from the completion judgment (spec5).
+        artist_date_done: artistDate ? artistDate.went_out === 1 : false,
         daily_status: dailyStatus,
         artist_date: artistDate ? {
           went_out: artistDate.went_out === 1,
@@ -656,9 +658,10 @@ async function handleGetStatistics(db, userId) {
     ).bind(userId).first()
     const totalCharacters = totalCharsResult.total || 0
 
-    // Artist date weeks count
+    // Artist date weeks count — counts weeks the user went out only
+    // (`excited` is excluded from the achievement judgment, spec5).
     const artistDateWeeksResult = await db.prepare(
-      'SELECT COUNT(*) as count FROM ArtistDates WHERE user_id = ? AND (went_out = 1 OR excited = 1)'
+      'SELECT COUNT(*) as count FROM ArtistDates WHERE user_id = ? AND went_out = 1'
     ).bind(userId).first()
     const artistDateWeeks = artistDateWeeksResult.count || 0
 

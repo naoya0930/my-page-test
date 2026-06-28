@@ -102,6 +102,9 @@ export default function StatisticsPage() {
 
   const { summary, weekly_stats, daily_activity, artist_date_history } = stats
 
+  // Today's date as YYYY-MM-DD, used to highlight the current day in the heatmap.
+  const today = new Date().toISOString().split('T')[0]
+
   // Calculate max characters for scaling the weekly chart
   const maxWeeklyChars = Math.max(...weekly_stats.map(w => w.total_characters), 1)
 
@@ -197,6 +200,7 @@ export default function StatisticsPage() {
           <div className="grid grid-cols-7 gap-2">
             {daily_activity.map((day, index) => {
               const isSelected = selectedDate === day.date
+              const isToday = day.date === today
               return (
               <button
                 key={index}
@@ -204,13 +208,22 @@ export default function StatisticsPage() {
                 // Radio-like single select: clicking the selected day deselects it.
                 onClick={() => setSelectedDate(isSelected ? null : day.date)}
                 aria-pressed={isSelected}
+                // Today is marked with an amber border (uses border so it can
+                // coexist with the indigo selection/hover ring).
                 className={`group relative h-12 w-full rounded-lg ${getHeatmapColor(day.character_count)} transition-all hover:scale-105 hover:ring-2 hover:ring-indigo-400 ${
                   isSelected ? 'ring-2 ring-indigo-600 ring-offset-2' : ''
-                }`}
-                title={`${day.date}: ${day.character_count} 文字`}
+                } ${isToday ? 'border-2 border-amber-500' : ''}`}
+                title={`${isToday ? '今日 — ' : ''}${day.date}: ${day.character_count} 文字`}
               >
+                {/* "今日" badge to make the current day easy to spot */}
+                {isToday && (
+                  <span className="absolute -right-1 -top-1 z-10 rounded-full bg-amber-500 px-1 text-[9px] font-bold leading-tight text-white shadow">
+                    今日
+                  </span>
+                )}
                 {/* Tooltip on hover */}
                 <div className="pointer-events-none absolute -top-16 left-1/2 z-10 hidden -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                  {isToday && <p className="whitespace-nowrap font-semibold text-amber-300">今日</p>}
                   <p className="whitespace-nowrap font-medium">{day.date}</p>
                   <p className="whitespace-nowrap">{day.character_count.toLocaleString()} 文字</p>
                   <p className="whitespace-nowrap text-slate-300">Week {day.week_number}, Day {day.day_of_week}</p>
@@ -228,6 +241,10 @@ export default function StatisticsPage() {
             <div className="h-4 w-4 rounded bg-teal-600"></div>
             <div className="h-4 w-4 rounded bg-teal-700"></div>
             <span>多い</span>
+            <span className="ml-3 flex items-center gap-1.5">
+              <span className="h-4 w-4 rounded border-2 border-amber-500 bg-slate-100"></span>
+              今日
+            </span>
           </div>
 
           {/* Detail panel for the selected day */}
