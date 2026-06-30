@@ -14,6 +14,8 @@
 
 # production
 /build
+# ビルド成果物はGitで管理せず、Cloudflare Workers Builds 側で生成する
+/dist
 
 # misc
 .DS_Store
