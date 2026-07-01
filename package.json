@@ -14,7 +14,8 @@
     "d1:list": "wrangler d1 list",
     "d1:execute": "wrangler d1 execute ast_way_db --local --command",
     "d1:migrate": "wrangler d1 execute ast_way_db --local --file=./migrations/001_create_tables.sql",
-    "d1:migrate:prod": "wrangler d1 execute ast_way_db --file=./migrations/001_create_tables.sql",
+    "d1:migrate:prod": "wrangler d1 execute ast_way_db --remote --file=./migrations/001_create_tables.sql",
+    "d1:tables:prod": "wrangler d1 execute ast_way_db --remote --command=\"SELECT name FROM sqlite_master WHERE type='table';\"",
     "d1:seed": "wrangler d1 execute ast_way_db --local --persist-to .wrangler --file=./migrations/test_data_v2.sql",
     "d1:reset": "wrangler d1 execute ast_way_db --local --persist-to .wrangler --file=./migrations/001_create_tables.sql && npm run d1:seed",
     "d1:tables": "wrangler d1 execute ast_way_db --local --command=\"SELECT name FROM sqlite_master WHERE type='table';\""
