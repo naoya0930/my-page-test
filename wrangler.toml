@@ -1,4 +1,4 @@
-name = "artist-way-support"
+name = "cloudflare-test"
 main = "./workers/index.js"
 compatibility_date = "2025-01-01"
 type = "javascript"
