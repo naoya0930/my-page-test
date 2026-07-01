@@ -43,9 +43,14 @@ export interface Progress {
  * Falls back to localhost for development
  */
 const getApiBaseUrl = (): string => {
-  // In production (Cloudflare Pages), use environment variable
-  // In development, use localhost
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787'
+  // 本番では同一オリジンの Worker が /api/* を配信するため、VITE_API_BASE_URL を
+  // 空文字にして相対パス（/api/...）を叩かせる。空文字は falsy なので `||` で
+  // フォールバックすると localhost が焼き込まれてしまう（本番でAPIが落ちる原因）。
+  // そのため VITE_API_BASE_URL が設定されていれば空文字でもそのまま尊重し、
+  // 未設定のときのみ同一オリジンの相対パスを既定とする。ローカル開発は .env の
+  // VITE_API_BASE_URL=http://localhost:8787 が明示指定されるためそちらが使われる。
+  const base = import.meta.env.VITE_API_BASE_URL
+  return base !== undefined ? base : ''
 }
 
 /**
